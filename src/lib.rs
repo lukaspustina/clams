@@ -1,7 +1,23 @@
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
+
 pub mod mv_videos {
-    pub fn build_find_cmd(source_dirs: &[&str], min_size: &str, extensions: &[&str]) -> Result<String, ()> {
-        if source_dirs.is_empty() { return Err(()) };
-        if extensions.is_empty() { return Err(()) };
+    #[derive(Debug, Fail)]
+    pub enum MvVideosError {
+        #[fail(display = "Source directories missing")]
+        EmptySources,
+        #[fail(display = "Extensions missing")]
+        EmptyExtensions,
+        #[fail(display = "Invalid size arg '{}'", arg)]
+        InvaildSize { arg: String },
+        #[fail(display = "Invalid extensions list '{}'", arg)]
+        InvalidExtensionsList { arg: String },
+    }
+
+    pub fn build_find_cmd(source_dirs: &[&str], min_size: &str, extensions: &[&str]) -> Result<String, MvVideosError> {
+        if source_dirs.is_empty() { return Err(MvVideosError::EmptySources); };
+        if extensions.is_empty() { return Err(MvVideosError::EmptyExtensions); };
 
         let srcs = source_dirs
             .iter()
@@ -17,8 +33,8 @@ pub mod mv_videos {
         Ok(format!("find {} -type f -size +{} {}", srcs, min_size, exts))
     }
 
-    pub fn check_size_arg(size: &str) -> Result<(), ()> {
-        if size.is_empty() { return Err(()); };
+    pub fn check_size_arg(size: &str) -> Result<(), MvVideosError> {
+        if size.is_empty() { return Err(MvVideosError::InvaildSize { arg: String::from(size) }); };
 
         let scales: &[_] = &['k', 'M', 'G', 'T', 'P'];
         let last = size.chars().last().unwrap(); // safe because is_empty check
@@ -32,11 +48,11 @@ pub mod mv_videos {
             return Ok(());
         }
 
-        Err(())
+        Err(MvVideosError::InvaildSize { arg: String::from(size) })
     }
 
-    pub fn parse_extensions(ext: &str) -> Result<Vec<&str>, ()> {
-        if ext.is_empty() { return Err(()) };
+    pub fn parse_extensions(ext: &str) -> Result<Vec<&str>, MvVideosError> {
+        if ext.is_empty() { return Err(MvVideosError::InvalidExtensionsList { arg: String::from(ext) }); };
 
         let res: Vec<_> = ext
             .trim_right_matches(',')

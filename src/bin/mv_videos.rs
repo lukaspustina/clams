@@ -1,6 +1,8 @@
 extern crate clam;
 #[macro_use]
-extern crate error_chain;
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
 #[macro_use]
 extern crate log;
 extern crate loggerv;
@@ -9,9 +11,10 @@ extern crate structopt;
 extern crate subprocess;
 
 use clam::mv_videos;
+use failure::{Error, ResultExt};
 use std::path::PathBuf;
 use structopt::StructOpt;
-use subprocess::Exec;
+use subprocess::{Exec, Redirection};
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "mv_videos",
@@ -39,44 +42,52 @@ struct Args {
     verbose: u64,
 }
 
-
-fn run() -> Result<()> {
-    let args = Args::from_args();
-    loggerv::init_with_verbosity(args.verbose)?;
-    debug!("args = {:#?}", args);
-
-    let _ = mv_videos::check_size_arg(&args.size).map_err(|_| panic!("Invalid size argument"));
+fn run(args: Args) -> Result<(), Error> {
+    let _ = mv_videos::check_size_arg(&args.size)?;
     let source_directories: Vec<_> = args.sources
         .iter()
         .map(|s| s.as_ref())
         .collect();
-    let extensions = mv_videos::parse_extensions(&args.extensions).unwrap();
+    let extensions = mv_videos::parse_extensions(&args.extensions)?;
 
-    let find = mv_videos::build_find_cmd(&source_directories, &args.size, extensions.as_slice()).unwrap();
+    let find = mv_videos::build_find_cmd(&source_directories, &args.size, extensions.as_slice())?;
     debug!("find = {}", find);
 
-    let out = Exec::shell(&find)
-        .capture()
-        .unwrap_or_else(|_| panic!(format!("Failed to execute shell command: '{}'", find)))
-        .stdout_str();
-    let files: Vec<_> = out
+    let res = Exec::shell(&find)
+        .stdout(Redirection::Pipe)
+        .stderr(Redirection::Merge)
+        .capture().context(format!("Failed to spawn shell command: '{}'", find))?;
+    if !res.exit_status.success() {
+        return Err(format_err!("Shell command failed: '{}', because:\n{}", find, res.stdout_str()));
+    }
+    let files: Vec<_> = res.stdout_str()
         .lines()
         .map(|f| PathBuf::from(f))
         .collect();
     debug!("files = {:#?}", files);
 
     for file in &files {
-        let file_name = file.file_name().unwrap();
+        let file_name = file.file_name()
+            .ok_or_else(||format_err!("Invalid file name")).context("File name from find command")?;
         println!("{:#?}", file_name);
     }
 
     Ok(())
 }
 
-quick_main!(run);
+fn main() {
+    let args = Args::from_args();
+    loggerv::init_with_verbosity(args.verbose)
+        .unwrap_or_else(|_| panic!("Could not initialize logging"));
+    debug!("args = {:#?}", args);
 
-error_chain! {
-    foreign_links {
-        Log(::log::SetLoggerError);
+    match run(args) {
+        Ok(_) => {}
+        Err(e) => {
+            println!("Failed:");
+            for c in e.causes() {
+                println!("{}", c);
+            }
+        }
     }
 }
