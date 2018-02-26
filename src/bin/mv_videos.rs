@@ -10,7 +10,7 @@ extern crate loggerv;
 extern crate structopt;
 extern crate subprocess;
 
-use clam::mv_videos;
+use clam::{fs, mv_videos};
 use failure::{Error, ResultExt};
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -44,6 +44,9 @@ struct Args {
 
 fn run(args: Args) -> Result<(), Error> {
     let _ = mv_videos::check_size_arg(&args.size)?;
+    if !PathBuf::from(&args.destination).is_dir() {
+        return Err(format_err!("Destination directory '{}' does not exist.", args.destination));
+    }
     let source_directories: Vec<_> = args.sources
         .iter()
         .map(|s| s.as_ref())
@@ -64,12 +67,28 @@ fn run(args: Args) -> Result<(), Error> {
         .lines()
         .map(|f| PathBuf::from(f))
         .collect();
-    debug!("files = {:#?}", files);
+    debug!("found files = {:#?}", files);
 
-    for file in &files {
-        let file_name = file.file_name()
-            .ok_or_else(||format_err!("Invalid file name")).context("File name from find command")?;
-        println!("{:#?}", file_name);
+    let (files, non_existing): (Vec<_>, Vec<_>) = files
+        .into_iter()
+        .partition(|f| fs::file_exists(&f) );
+    debug!("non existing files = {:#?}", non_existing);
+
+    if !non_existing.is_empty() {
+        return Err(format_err!("Could not find files returned from find command {:#?}", non_existing));
+    }
+
+    let moves: Vec<(_,_)> = files
+        .iter()
+        .map(|f| {
+            let dest_path = mv_videos::destination_path(&args.destination, f).unwrap();
+            (f, dest_path)
+        })
+        .collect();
+
+    for (ref from, ref to) in moves {
+        print!("Moving {:?} to {:?} ...", from, to);
+        println!(" done.");
     }
 
     Ok(())

@@ -2,7 +2,44 @@ extern crate failure;
 #[macro_use]
 extern crate failure_derive;
 
+#[cfg(test)]
+extern crate spectral;
+
+pub mod fs {
+    use std::path::Path;
+
+    pub fn file_exists<T: AsRef<Path>>(path: T) -> bool {
+        path.as_ref().exists()
+    }
+
+    #[cfg(test)]
+    mod test {
+        pub use super::*;
+        pub use spectral::prelude::*;
+
+        mod file_exists {
+            use super::*;
+
+            #[test]
+            fn no_such_file() {
+                let file_name = "no_such.file";
+                let res = file_exists(&file_name);
+                assert_that(&res).is_false();
+            }
+
+            #[test]
+            fn file_does_exists() {
+                let file_name = "tests/data/file.exists";
+                let res = file_exists(&file_name);
+                assert_that(&res).is_true();
+            }
+        }
+    }
+}
+
 pub mod mv_videos {
+    use std::path::{Path, PathBuf};
+
     #[derive(Debug, Fail)]
     pub enum MvVideosError {
         #[fail(display = "Source directories missing")]
@@ -13,6 +50,8 @@ pub mod mv_videos {
         InvaildSize { arg: String },
         #[fail(display = "Invalid extensions list '{}'", arg)]
         InvalidExtensionsList { arg: String },
+        #[fail(display = "Invalid file name'{}'", arg)]
+        InvalidFileName { arg: String },
     }
 
     pub fn build_find_cmd(source_dirs: &[&str], min_size: &str, extensions: &[&str]) -> Result<String, MvVideosError> {
@@ -51,6 +90,17 @@ pub mod mv_videos {
         Err(MvVideosError::InvaildSize { arg: String::from(size) })
     }
 
+    pub fn destination_path<T: AsRef<Path>, S: AsRef<Path>>(destination_dir: T, file_path: S) -> Result<PathBuf, MvVideosError> {
+        let file = file_path.as_ref().file_name()
+            .ok_or_else(|| MvVideosError::InvalidFileName { arg: format!("{:?}", file_path.as_ref()) })?;
+
+        let mut path = PathBuf::new();
+        path.push(destination_dir.as_ref());
+        path.push(file);
+
+        Ok(path)
+    }
+
     pub fn parse_extensions(ext: &str) -> Result<Vec<&str>, MvVideosError> {
         if ext.is_empty() { return Err(MvVideosError::InvalidExtensionsList { arg: String::from(ext) }); };
 
@@ -60,102 +110,111 @@ pub mod mv_videos {
 
         Ok(res)
     }
-}
 
-#[cfg(test)]
-extern crate spectral;
+    #[cfg(test)]
+    mod test {
+        pub use super::*;
+        pub use spectral::prelude::*;
 
-#[cfg(test)]
-mod test {
-    pub use super::*;
-    pub use spectral::prelude::*;
+        mod build_find {
+            use super::*;
 
-    mod build_find {
-        use super::*;
-        use super::mv_videos::*;
+            #[test]
+            fn empty_extensions() {
+                let res = build_find_cmd(&["one", "two"], "100M", &[]);
+                assert_that(&res).is_err();
+            }
 
-        #[test]
-        fn empty_extensions() {
-            let res = build_find_cmd(&["one", "two"], "100M", &[]);
-            assert_that(&res).is_err();
+            #[test]
+            fn empty_source_directories() {
+                let res = build_find_cmd(&[], "100M", &["avi", "mkv", "mp4"]);
+                assert_that(&res).is_err();
+            }
+
+            #[test]
+            fn find() {
+                let res = build_find_cmd(&["one", "two"], "100M", &["avi", "mkv", "mp4"]);
+                assert_that(&res)
+                    .is_ok()
+                    .is_equal_to(r#"find "one" "two" -type f -size +100M -name "*.avi" -or -name "*.mkv" -or -name "*.mp4""#.to_string());
+            }
         }
 
-        #[test]
-        fn empty_source_directories() {
-            let res = build_find_cmd(&[], "100M", &["avi", "mkv", "mp4"]);
-            assert_that(&res).is_err();
+        mod check_size_arg {
+            use super::*;
+
+            #[test]
+            fn empty() {
+                let res = check_size_arg("");
+                assert_that(&res).is_err();
+            }
+
+            #[test]
+            fn nan() {
+                let res = check_size_arg("a10");
+                assert_that(&res).is_err();
+            }
+
+            #[test]
+            fn bytes() {
+                let res = check_size_arg("100");
+                assert_that(&res).is_ok();
+            }
+
+            #[test]
+            fn unknown_scale() {
+                let res = check_size_arg("100L");
+                assert_that(&res).is_err();
+            }
+
+            #[test]
+            fn scale_k() {
+                let res = check_size_arg("100k");
+                assert_that(&res).is_ok();
+            }
         }
 
-        #[test]
-        fn find() {
-            let res = build_find_cmd(&["one", "two"], "100M", &["avi", "mkv", "mp4"]);
-            assert_that(&res)
-                .is_ok()
-                .is_equal_to(r#"find "one" "two" -type f -size +100M -name "*.avi" -or -name "*.mkv" -or -name "*.mp4""#.to_string());
-        }
-    }
+        mod destination_path {
+            use super::*;
 
-    mod check_size_arg {
-        use super::*;
-        use super::mv_videos::*;
+            #[test]
+            fn destination_path_ok() {
+                let destination_dir = PathBuf::from("/tmp");
+                let abs_file = PathBuf::from("/temp/a_file");
+                let expected = PathBuf::from("/tmp/a_file");
 
-        #[test]
-        fn empty() {
-            let res = check_size_arg("");
-            assert_that(&res).is_err();
+                let res = destination_path(&destination_dir, &abs_file);
+
+                assert_that(&res).is_ok().is_equal_to(expected);
+            }
         }
 
-        #[test]
-        fn nan() {
-            let res = check_size_arg("a10");
-            assert_that(&res).is_err();
-        }
+        mod parse_extension {
+            use super::*;
 
-        #[test]
-        fn bytes() {
-            let res = check_size_arg("100");
-            assert_that(&res).is_ok();
-        }
+            #[test]
+            fn empty() {
+                let res = parse_extensions("");
+                assert_that(&res).is_err();
+            }
 
-        #[test]
-        fn unknown_scale() {
-            let res = check_size_arg("100L");
-            assert_that(&res).is_err();
-        }
+            #[test]
+            fn one_extension() {
+                let res = parse_extensions("mkv");
+                assert_that(&res).is_ok().has_length(1);
+            }
 
-        #[test]
-        fn scale_k() {
-            let res = check_size_arg("100k");
-            assert_that(&res).is_ok();
-        }
-    }
+            #[test]
+            fn two_extension() {
+                let res = parse_extensions("mkv,avi");
+                assert_that(&res).is_ok().has_length(2);
+            }
 
-    mod parse_extension {
-        use super::*;
-        use super::mv_videos::*;
-
-        #[test]
-        fn empty() {
-            let res = parse_extensions("");
-            assert_that(&res).is_err();
-        }
-
-        #[test]
-        fn one_extension() {
-            let res = parse_extensions("mkv");
-            assert_that(&res).is_ok().has_length(1);
-        }
-
-        #[test]
-        fn two_extension() {
-            let res = parse_extensions("mkv,avi");
-            assert_that(&res).is_ok().has_length(2);
-        }
-
-        #[test]
-        fn two_extension_trailing_sep() {
-            let res = parse_extensions("mkv,avi,");
-            assert_that(&res).is_ok().has_length(2);
+            #[test]
+            fn two_extension_trailing_sep() {
+                let res = parse_extensions("mkv,avi,");
+                assert_that(&res).is_ok().has_length(2);
+            }
         }
     }
 }
