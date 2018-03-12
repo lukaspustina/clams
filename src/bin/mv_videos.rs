@@ -1,16 +1,18 @@
 extern crate clam;
+extern crate colored;
 #[macro_use]
 extern crate failure;
 #[macro_use]
 extern crate failure_derive;
+extern crate fern;
 #[macro_use]
 extern crate log;
-extern crate loggerv;
 #[macro_use]
 extern crate structopt;
 extern crate subprocess;
 
-use clam::{fs, mv_videos};
+use clam::{fs, logging, mv_videos};
+use colored::Colorize;
 use failure::{Error, ResultExt};
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -39,7 +41,7 @@ struct Args {
     dry: bool,
     /// Verbose mode (-v, -vv, -vvv, etc.)
     #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
-    verbose: u64,
+    verbosity: u64,
 }
 
 fn run(args: Args) -> Result<(), Error> {
@@ -86,9 +88,10 @@ fn run(args: Args) -> Result<(), Error> {
         })
         .collect();
 
-    for (ref from, ref to) in moves {
-        print!("Moving {:?} to {:?} ...", from, to);
-        println!(" done.");
+    for (from, to) in moves {
+        // Safe unwrap because we already checked the paths.
+        print!("Moving {} to {} ...", from.to_str().unwrap().yellow(), to.to_str().unwrap().yellow());
+        println!(" {}.", "done".green());
     }
 
     Ok(())
@@ -96,8 +99,11 @@ fn run(args: Args) -> Result<(), Error> {
 
 fn main() {
     let args = Args::from_args();
-    loggerv::init_with_verbosity(args.verbose)
-        .unwrap_or_else(|_| panic!("Could not initialize logging"));
+
+    let log_level = logging::int_to_log_level(args.verbosity);
+    logging::init_logging("mv_videos", log_level, log::LevelFilter::Warn).expect("Failed to initialize logging");
+
+    println!("{} {}, log level={}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"), log_level);
     debug!("args = {:#?}", args);
 
     match run(args) {

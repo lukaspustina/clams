@@ -8,10 +8,12 @@ name = "mv_videos"
 path = "src/bin/mv_videos.rs"
 
 [dependencies]
+colored = "^1.6"
+error-chain = "^0.11"
 failure = "^0.1"
 failure_derive = "^0.1"
 log = "^0.4"
-loggerv = "^0.7"
+fern = { version = "^0.5", features = ["colored"] }
 structopt = "^0.2"
 subprocess = "^0.1"
 
