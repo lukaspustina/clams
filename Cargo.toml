@@ -1,8 +1,8 @@
 [package]
-name = "clam"
+name = "clams"
 version = "0.0.2"
 authors = ["Lukas Pustina <lukas@pustina.net>"]
-description = "Clam helps bulding shells"
+description = "Clams help bulding shells"
 readme = "README.md"
 license = "MIT"
 keywords = ["shell", "cli"]
@@ -14,8 +14,8 @@ include = [
 ]
 
 [badges]
-travis-ci = { repository = "lukaspustina/clam", branch = "master" }
-codecov = { repository = "lukaspustina/clam", branch = "master", service = "github" }
+travis-ci = { repository = "lukaspustina/clams", branch = "master" }
+codecov = { repository = "lukaspustina/clams", branch = "master", service = "github" }
 
 [dependencies]
 colored = "^1.6"
