@@ -1,6 +1,6 @@
 [package]
 name = "clams"
-version = "0.0.2"
+version = "0.0.3"
 authors = ["Lukas Pustina <lukas@pustina.net>"]
 description = "Clams help building shells"
 repository = "https://github.com/lukaspustina/clams.git"
@@ -19,7 +19,7 @@ travis-ci = { repository = "lukaspustina/clams", branch = "master" }
 codecov = { repository = "lukaspustina/clams", branch = "master", service = "github" }
 
 [dependencies]
-clams-derive = { path = "../clams-derive" }
+clams-derive = "^0.0.2"
 colored = "^1.6"
 error-chain = "^0.11"
 log = "^0.4"
