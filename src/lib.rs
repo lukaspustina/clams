@@ -18,19 +18,24 @@ extern crate serde_derive;
 pub mod config {
     use std::path::Path;
 
-    trait Config {
+    pub trait Config {
         type ConfigStruct;
 
-        fn from_file<T: AsRef<Path>>(file_path: T) -> Result<Self::ConfigStruct>;
+        fn from_file<T: AsRef<Path>>(file_path: T) -> ConfigResult<Self::ConfigStruct>;
     }
 
     error_chain! {
+        types {
+            ConfigError, ConfigErrorKind, ConfigResultExt, ConfigResult;
+        }
+
         errors {
             NoSuchProfile(profile: String) {
                 description("No such profile")
                 display("No such profile '{}'", profile)
             }
         }
+
         foreign_links {
             CouldNotRead(::std::io::Error);
             CouldNotParse(::toml::de::Error);
