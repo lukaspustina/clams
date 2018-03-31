@@ -2,9 +2,64 @@ extern crate fern;
 #[macro_use]
 extern crate error_chain;
 extern crate log;
+extern crate toml;
 
 #[cfg(test)]
+#[macro_use]
+extern crate clams_derive;
+#[cfg(test)]
 extern crate spectral;
+#[cfg(test)]
+extern crate serde;
+#[cfg(test)]
+#[macro_use]
+extern crate serde_derive;
+
+pub mod config {
+    use std::path::Path;
+
+    trait Config {
+        type ConfigStruct;
+
+        fn from_file<T: AsRef<Path>>(file_path: T) -> Result<Self::ConfigStruct>;
+    }
+
+    error_chain! {
+        errors {
+            NoSuchProfile(profile: String) {
+                description("No such profile")
+                display("No such profile '{}'", profile)
+            }
+        }
+        foreign_links {
+            CouldNotRead(::std::io::Error);
+            CouldNotParse(::toml::de::Error);
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        pub use super::*;
+        pub use spectral::prelude::*;
+
+        #[derive(Config, Debug, Default, Serialize, Deserialize, PartialEq)]
+        struct MyConfig {
+            pub general: General,
+        }
+
+        #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
+        struct General {
+            pub name: String,
+        }
+
+        #[test]
+        fn read_from_file() {
+            let my_config = MyConfig::from_file("examples/my_config.toml");
+
+            assert_that(&my_config).is_ok();
+        }
+    }
+}
 
 pub mod fs {
     use std::path::Path;

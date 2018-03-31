@@ -2,7 +2,8 @@
 name = "clams"
 version = "0.0.2"
 authors = ["Lukas Pustina <lukas@pustina.net>"]
-description = "Clams help bulding shells"
+description = "Clams help building shells"
+repository = "https://github.com/lukaspustina/clams.git"
 readme = "README.md"
 license = "MIT"
 keywords = ["shell", "cli"]
@@ -18,12 +19,16 @@ travis-ci = { repository = "lukaspustina/clams", branch = "master" }
 codecov = { repository = "lukaspustina/clams", branch = "master", service = "github" }
 
 [dependencies]
+clams-derive = { path = "../clams-derive" }
 colored = "^1.6"
 error-chain = "^0.11"
 log = "^0.4"
 fern = { version = "^0.5", features = ["colored"] }
 subprocess = "^0.1"
+toml = "^0.4"
 
 [dev-dependencies]
+serde = "^1.0"
+serde_derive = "^1.0"
 spectral = "^0.6"
 
