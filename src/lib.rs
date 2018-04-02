@@ -130,8 +130,11 @@ pub mod config {
 
         #[test]
         fn default_locations_okay() {
+            let home_dir = home_dir().expect("Could not retrieve username");
+            let mut home_config = PathBuf::from(home_dir);
+            home_config.push(".my_config.toml");
             let expected: Vec<PathBuf> = vec![
-                PathBuf::from("/Users/lukas/.my_config.toml"),
+                home_config,
                 PathBuf::from("/etc/my_config.toml"),
             ];
 
