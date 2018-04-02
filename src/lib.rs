@@ -20,12 +20,33 @@ extern crate serde_derive;
 extern crate tail;
 
 pub mod config {
-    use std::path::Path;
+    use fs::home_dir;
+
+    use std::path::{Path, PathBuf};
 
     pub trait Config {
         type ConfigStruct;
 
         fn from_file<T: AsRef<Path>>(file_path: T) -> ConfigResult<Self::ConfigStruct>;
+
+        fn smart_load<T: AsRef<Path>>(file_paths: &[T]) -> ConfigResult<Self::ConfigStruct>;
+    }
+
+    pub fn default_locations(config_file_name: &str) -> Vec<PathBuf> {
+        let mut locations: Vec<PathBuf> = Vec::new();
+
+        if let Some(mut path) = home_dir() {
+            let home_config = format!(".{}", config_file_name);
+            path.push(home_config);
+            locations.push(path);
+        }
+
+        let mut etc = PathBuf::new();
+        etc.push("/etc");
+        etc.push(config_file_name);
+        locations.push(etc);
+
+        locations
     }
 
     error_chain! {
@@ -34,9 +55,9 @@ pub mod config {
         }
 
         errors {
-            NoSuchProfile(profile: String) {
-                description("No such profile")
-                display("No such profile '{}'", profile)
+            NoSuitableConfigFound(configs: Vec<String>) {
+                description("No suitable configuration found")
+                display("No suitable configuration found '{:?}'", configs)
             }
         }
 
@@ -62,10 +83,50 @@ pub mod config {
         }
 
         #[test]
-        fn read_from_file() {
+        fn from_file_okay() {
             let my_config = MyConfig::from_file("examples/my_config.toml");
 
             assert_that(&my_config).is_ok();
+        }
+
+        #[test]
+        fn smart_load_okay() {
+            let locations = vec!["tmp/my_config.toml", "tmp2/my_config.toml", "examples/my_config.toml"];
+
+            let res = MyConfig::smart_load(&locations);
+
+            assert_that(&res).is_ok();
+        }
+
+        #[test]
+        fn smart_load_faild() {
+            let locations = vec!["tmp/my_config.toml", "tmp2/my_config.toml"];
+
+            let res = MyConfig::smart_load(&locations);
+
+            assert_that(&res).is_err();
+        }
+
+        #[test]
+        fn default_locations_okay() {
+            let expected: Vec<PathBuf> = vec![
+                PathBuf::from("/Users/lukas/.my_config.toml"),
+                PathBuf::from("/etc/my_config.toml"),
+            ];
+
+            let res = default_locations("my_config.toml");
+
+            assert_that(&res).is_equal_to(expected);
+        }
+
+        #[test]
+        fn smart_load_from_default_locations_and_local() {
+            let mut locations = default_locations("my_config.toml");
+            locations.push(PathBuf::from("examples/my_config.toml"));
+
+            let res = MyConfig::smart_load(&locations);
+
+            assert_that(&res).is_ok();
         }
     }
 }
@@ -153,12 +214,17 @@ pub mod console {
 
 pub mod fs {
     use std::io::{BufReader, BufWriter};
+    use std::env;
     use std::fs::File;
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use tail;
 
     pub fn file_exists<T: AsRef<Path>>(path: T) -> bool {
         path.as_ref().exists()
+    }
+
+    pub fn home_dir() -> Option<PathBuf> {
+        env::home_dir()
     }
 
     pub trait FileExt {
@@ -246,11 +312,7 @@ pub mod logging {
         pub level: Level,
     }
 
-    pub fn init_logging<T: Into<Output>>(out: T, default: Level, levels: Vec<ModLevel>) -> Result<()> {
-        let colors = ColoredLevelConfig::new()
-            .info(Color::Green)
-            .debug(Color::Blue);
-
+    pub fn init_logging<T: Into<Output>>(out: T, color: bool, default: Level, levels: Vec<ModLevel>) -> Result<()> {
         let Level(default) = default;
         let mut log_levels = Dispatch::new().level(default);
 
@@ -261,6 +323,23 @@ pub mod logging {
         }
         log_levels = log_levels.chain(out);
 
+        let format = if color {
+            format_with_color()
+        } else {
+            format_no_color()
+        };
+        format
+            .chain(log_levels)
+            .apply()
+            .map_err(|e| Error::with_chain(e, ErrorKind::FailedToInitLogging))?;
+
+        Ok(())
+    }
+
+    fn format_with_color() -> Dispatch {
+        let colors = ColoredLevelConfig::new()
+            .info(Color::Green)
+            .debug(Color::Blue);
         Dispatch::new()
             .format(move |out, message, record| {
                 let level = format!("{}", record.level());
@@ -273,11 +352,21 @@ pub mod logging {
                     padding = 6 - level.len(),
                 ))
             })
-            .chain(log_levels)
-            .apply()
-            .map_err(|e| Error::with_chain(e, ErrorKind::FailedToInitLogging))?;
+    }
 
-        Ok(())
+    fn format_no_color() -> Dispatch {
+        Dispatch::new()
+            .format(move |out, message, record| {
+                let level = format!("{}", record.level());
+                out.finish(format_args!(
+                    "{}{:padding$}{}: {}",
+                    record.level(),
+                    " ",
+                    record.target(),
+                    message,
+                    padding = 6 - level.len(),
+                ))
+            })
     }
 
     error_chain! {
