@@ -1,9 +1,27 @@
-extern crate fern;
+extern crate colored;
 #[macro_use]
 extern crate error_chain;
+extern crate fern;
 extern crate log;
 extern crate indicatif;
+extern crate tail;
 extern crate toml;
+
+mod reexports {
+    #[doc(hidden)] pub use colored::*;
+    #[doc(hidden)] pub use indicatif::*;
+    #[doc(hidden)] pub use log::*;
+}
+
+pub mod prelude {
+    pub use reexports::*;
+
+    pub use config::{Config, default_locations};
+    pub use console::ask_for_confirmation;
+    pub use fs::FileExt;
+    pub use logging::{Level, ModLevel, init_logging};
+    pub use progress::ProgressStyleExt;
+}
 
 #[cfg(test)]
 #[macro_use]
@@ -17,12 +35,15 @@ extern crate serde;
 #[cfg(test)]
 #[macro_use]
 extern crate serde_derive;
-extern crate tail;
 
 pub mod config {
     use fs::home_dir;
 
     use std::path::{Path, PathBuf};
+
+    pub mod prelude {
+        pub use config::{Config, ConfigError, ConfigErrorKind, ConfigResult};
+    }
 
     pub trait Config {
         type ConfigStruct;
@@ -132,6 +153,7 @@ pub mod config {
 }
 
 pub mod console {
+    use colored;
     use std::io::{self, BufRead, BufReader, Write};
 
     pub fn ask_for_confirmation(prompt: &str, expected: &str) -> Result<bool> {
@@ -149,15 +171,17 @@ pub mod console {
 
         let mut input = String::new();
         match reader.read_line(&mut input) {
-            Ok(_) => {
-                if input.trim() == expected {
-                    Ok(true)
-                } else {
-                    Ok(false)
-                }
-            }
+            Ok(_) => Ok(input.trim() == expected),
             Err(e) => Err(Error::with_chain(e, ErrorKind::FailedToReadConfirmation)),
         }
+    }
+
+    pub fn set_color_off() -> () {
+        set_color(false);
+    }
+
+    pub fn set_color(on: bool) -> () {
+        colored::control::set_override(on); 
     }
 
     error_chain! {
