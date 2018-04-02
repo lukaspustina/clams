@@ -226,7 +226,7 @@ pub mod logging {
     use fern::colors::{Color, ColoredLevelConfig};
     use log;
 
-    #[derive(Debug, Eq, PartialEq, PartialOrd, Ord)]
+    #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
     pub struct Level(pub log::LevelFilter);
 
     impl From<u64> for Level {
@@ -294,6 +294,8 @@ pub mod progress {
 
     pub trait ProgressStyleExt {
         fn default_clams_spinner() -> ProgressStyle;
+
+        fn default_clams_bar() -> ProgressStyle;
     }
 
     impl ProgressStyleExt for ProgressStyle {
@@ -301,6 +303,12 @@ pub mod progress {
             ProgressStyle::default_spinner()
                 .template("{prefix:.bold.dim} [{elapsed}] {spinner} {wide_msg}")
         }
+
+        fn default_clams_bar() -> ProgressStyle {
+            ProgressStyle::default_bar()
+                .template("[{elapsed_precise}] [{bar:20.blue/blue}] {pos}/{len} ({eta}) {wide_msg} {spinner:.blue}")
+        }
+
     }
 }
 
