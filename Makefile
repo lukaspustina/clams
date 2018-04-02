@@ -21,6 +21,11 @@ release: release-bump all docs
 release-bump:
 	cargo bump
 
+publish:
+	git push
+	git push --tags
+	cargo publish
+
 clippy:
 	rustup run nightly cargo clippy
 
