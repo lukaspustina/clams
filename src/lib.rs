@@ -348,6 +348,19 @@ pub mod logging {
         context: Option<String>,
     }
 
+    impl LogConfig {
+        pub fn new<T: Into<Output>>(out: T, color: bool, default: Level, levels: Vec<ModLevel>, context: Option<String>) -> Self {
+            LogConfig {
+                out: out.into(),
+                color,
+                default,
+                levels,
+                context,
+            }
+        }
+    }
+
+
     pub fn init_logging(log_config: LogConfig) -> Result<()> {
         let Level(default) = log_config.default;
         let mut log_levels = Dispatch::new().level(default);
