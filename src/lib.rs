@@ -390,7 +390,7 @@ pub mod logging {
             .info(Color::Green)
             .debug(Color::Blue);
         let context = if let Some(c) = context {
-            format!("Context={}", c)
+            format!("[Context: {}] ", c)
         } else {
             "".to_owned()
         };
@@ -411,7 +411,7 @@ pub mod logging {
 
     fn format_no_color(context: Option<String>) -> Dispatch {
         let context = if let Some(c) = context {
-            format!("Context={}", c)
+            format!("[Context: {}] ", c)
         } else {
             "".to_owned()
         };
