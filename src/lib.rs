@@ -19,7 +19,7 @@ pub mod prelude {
     pub use config::{Config, default_locations};
     pub use console::ask_for_confirmation;
     pub use fs::FileExt;
-    pub use logging::{Level, ModLevel, init_logging};
+    pub use logging::{Level, LogConfig, ModLevel, init_logging};
     pub use progress::ProgressStyleExt;
 }
 
