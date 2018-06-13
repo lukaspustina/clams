@@ -339,21 +339,30 @@ pub mod logging {
         pub level: Level,
     }
 
-    pub fn init_logging<T: Into<Output>>(out: T, color: bool, default: Level, levels: Vec<ModLevel>) -> Result<()> {
-        let Level(default) = default;
+    #[derive(Debug)]
+    pub struct LogConfig {
+        out: Output,
+        color: bool,
+        default: Level,
+        levels: Vec<ModLevel>,
+        context: Option<String>,
+    }
+
+    pub fn init_logging(log_config: LogConfig) -> Result<()> {
+        let Level(default) = log_config.default;
         let mut log_levels = Dispatch::new().level(default);
 
-        for md in levels.into_iter() {
+        for md in log_config.levels.into_iter() {
             let ModLevel { module, level } = md;
             let Level(level) = level;
             log_levels = log_levels.level_for(module, level);
         }
-        log_levels = log_levels.chain(out);
+        log_levels = log_levels.chain(log_config.out);
 
-        let format = if color {
-            format_with_color()
+        let format = if log_config.color {
+            format_with_color(log_config.context)
         } else {
-            format_no_color()
+            format_no_color(log_config.context)
         };
         format
             .chain(log_levels)
@@ -363,15 +372,21 @@ pub mod logging {
         Ok(())
     }
 
-    fn format_with_color() -> Dispatch {
+    fn format_with_color(context: Option<String>) -> Dispatch {
         let colors = ColoredLevelConfig::new()
             .info(Color::Green)
             .debug(Color::Blue);
+        let context = if let Some(c) = context {
+            format!("Context={}", c)
+        } else {
+            "".to_owned()
+        };
         Dispatch::new()
             .format(move |out, message, record| {
                 let level = format!("{}", record.level());
                 out.finish(format_args!(
-                    "{}{:padding$}{}: {}",
+                    "{}{}{:padding$}{}: {}",
+                    context,
                     colors.color(record.level()),
                     " ",
                     record.target(),
@@ -381,12 +396,18 @@ pub mod logging {
             })
     }
 
-    fn format_no_color() -> Dispatch {
+    fn format_no_color(context: Option<String>) -> Dispatch {
+        let context = if let Some(c) = context {
+            format!("Context={}", c)
+        } else {
+            "".to_owned()
+        };
         Dispatch::new()
             .format(move |out, message, record| {
                 let level = format!("{}", record.level());
                 out.finish(format_args!(
-                    "{}{:padding$}{}: {}",
+                    "{}{}{:padding$}{}: {}",
+                    context,
                     record.level(),
                     " ",
                     record.target(),
