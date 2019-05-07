@@ -27,7 +27,7 @@ fern = { version = "^0.5", features = ["colored"] }
 indicatif = "^0.9"
 subprocess = "^0.1"
 tail = "^0.3"
-toml = "^0.4"
+toml = "^0.5"
 
 [dev-dependencies]
 quickcheck = "^0.6"
