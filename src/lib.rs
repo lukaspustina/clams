@@ -1,12 +1,3 @@
-extern crate colored;
-#[macro_use]
-extern crate error_chain;
-extern crate fern;
-extern crate log;
-extern crate indicatif;
-extern crate tail;
-extern crate toml;
-
 mod reexports {
     #[doc(hidden)] pub use colored::*;
     #[doc(hidden)] pub use indicatif::*;
@@ -14,35 +5,23 @@ mod reexports {
 }
 
 pub mod prelude {
-    pub use reexports::*;
+    pub use crate::reexports::*;
 
-    pub use config::{Config, default_locations};
-    pub use console::ask_for_confirmation;
-    pub use fs::FileExt;
-    pub use logging::{Level, LogConfig, ModLevel, init_logging};
-    pub use progress::ProgressStyleExt;
+    pub use crate::config::{Config, default_locations};
+    pub use crate::console::ask_for_confirmation;
+    pub use crate::fs::FileExt;
+    pub use crate::logging::{Level, LogConfig, ModLevel, init_logging};
+    pub use crate::progress::ProgressStyleExt;
 }
 
-#[cfg(test)]
-#[macro_use]
-extern crate clams_derive;
-#[cfg(test)]
-extern crate quickcheck;
-#[cfg(test)]
-extern crate spectral;
-#[cfg(test)]
-extern crate serde;
-#[cfg(test)]
-#[macro_use]
-extern crate serde_derive;
-
 pub mod config {
-    use fs::home_dir;
+    use crate::fs::home_dir;
 
+    use error_chain::*;
     use std::path::{Path, PathBuf};
 
     pub mod prelude {
-        pub use config::{Config, ConfigError, ConfigErrorKind, ConfigResult};
+        pub use crate::config::{Config, ConfigError, ConfigErrorKind, ConfigResult};
     }
 
     pub trait Config {
@@ -90,8 +69,10 @@ pub mod config {
 
     #[cfg(test)]
     mod test {
-        pub use super::*;
-        pub use spectral::prelude::*;
+        use super::*;
+        use clams_derive::Config;
+        use serde::{Deserialize, Serialize};
+        use spectral::prelude::*;
 
         #[derive(Config, Debug, Default, Serialize, Deserialize, PartialEq)]
         struct MyConfig {
@@ -158,6 +139,7 @@ pub mod config {
 pub mod console {
     use colored;
     use std::io::{self, BufRead, BufReader, Write};
+    use error_chain::*;
 
     pub fn ask_for_confirmation(prompt: &str, expected: &str) -> Result<bool> {
         let mut reader = BufReader::new(io::stdin());
@@ -315,6 +297,7 @@ pub mod fs {
 }
 
 pub mod logging {
+    use error_chain::*;
     use fern::{Dispatch, Output};
     use fern::colors::{Color, ColoredLevelConfig};
     use log;
