@@ -1,6 +1,6 @@
 [package]
 name = "clams"
-version = "0.0.14"
+version = "0.0.15"
 authors = ["Lukas Pustina <lukas@pustina.net>"]
 description = "Clams help building shells"
 repository = "https://github.com/lukaspustina/clams.git"
