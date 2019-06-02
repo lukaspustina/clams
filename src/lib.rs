@@ -21,7 +21,9 @@ pub mod config {
     use std::path::{Path, PathBuf};
 
     pub mod prelude {
-        pub use crate::config::{Config, ConfigError, ConfigErrorKind, ConfigResult};
+        pub use crate::config::{Config, ConfigError, ConfigErrorKind, ConfigResult, ConfigResultExt};
+
+        pub use clams_derive::Config;
     }
 
     pub trait Config {
