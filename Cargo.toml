@@ -21,7 +21,7 @@ codecov = { repository = "lukaspustina/clams", branch = "master", service = "git
 
 [dependencies]
 clams-derive = "^0.0.5"
-colored = "^1.6"
+colored = "^1.8"
 error-chain = "^0.12"
 log = "^0.4"
 fern = { version = "^0.5", features = ["colored"] }
