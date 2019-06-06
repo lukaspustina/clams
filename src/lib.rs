@@ -31,7 +31,9 @@ pub mod config {
 
         fn from_file<T: AsRef<Path>>(file_path: T) -> ConfigResult<Self::ConfigStruct>;
 
-        fn smart_load<T: AsRef<Path>>(file_paths: &[T]) -> ConfigResult<Self::ConfigStruct>;
+        fn smart_load<T: AsRef<Path>>(file_paths: &[T]) -> ConfigResult<(Self::ConfigStruct, &Path)>;
+
+        fn save<T: AsRef<Path>>(&self, file_path: T) -> ConfigResult<()>;
     }
 
     pub fn default_locations(config_file_name: &str) -> Vec<PathBuf> {
@@ -66,6 +68,7 @@ pub mod config {
         foreign_links {
             CouldNotRead(::std::io::Error);
             CouldNotParse(::toml::de::Error);
+            CouldNotWrite(::toml::ser::Error);
         }
     }
 

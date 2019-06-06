@@ -20,7 +20,7 @@ travis-ci = { repository = "lukaspustina/clams", branch = "master" }
 codecov = { repository = "lukaspustina/clams", branch = "master", service = "github" }
 
 [dependencies]
-clams-derive = "^0.0.5"
+clams-derive = "^0.0.6"
 colored = "^1.6"
 error-chain = "^0.12"
 log = "^0.4"
