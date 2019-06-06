@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "clams"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "clams-derive 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "colored 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
