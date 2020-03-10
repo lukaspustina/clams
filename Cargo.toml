@@ -24,7 +24,7 @@ clams-derive = "^0.0.6"
 colored = "^1.6"
 error-chain = "^0.12"
 log = "^0.4"
-fern = { version = "^0.5", features = ["colored"] }
+fern = { version = "^0.6", features = ["colored"] }
 indicatif = "^0.9"
 subprocess = "^0.1"
 tail = "^0.3"
